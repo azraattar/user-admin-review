@@ -4,16 +4,17 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 st.set_page_config(page_title="Admin Dashboard", page_icon="📊", layout="wide")
 
-# 🚨 RECOMMENDED FIX: Cache the complex chart generation
+# -------------------- PERFORMANCE FIX: Caching the Charts --------------------
 @st.cache_data
 def generate_charts(data: pd.DataFrame):
     """Generates and returns the Plotly figures based on the input data."""
     
     rating_counts = data["rating"].value_counts().sort_index()
 
-    # --- PIE CHART ---
+    # --- PIE CHART LOGIC ---
     fig_pie = px.pie(
         values=rating_counts.values,
         names=rating_counts.index,
@@ -29,7 +30,7 @@ def generate_charts(data: pd.DataFrame):
         height=350
     )
     
-    # --- BAR CHART ---
+    # --- BAR CHART LOGIC ---
     fig_bar = go.Figure(
         data=[go.Bar(
             x=rating_counts.index, 
@@ -56,35 +57,64 @@ def generate_charts(data: pd.DataFrame):
     
     return fig_pie, fig_bar
 
-# -------------------- CUSTOM CSS (CSS is omitted for brevity but remains the same) --------------------
-# ... (all your existing CSS and decorative elements code) ...
+
+# -------------------- CUSTOM CSS --------------------
+st.markdown("""
+<style>
+.stApp { background-color: #f5f1e8; }
+.stApp, .stApp * { color: #1a1a1a !important; }
+header[data-testid="stHeader"] { display: none !important; }
+.main .block-container { padding-top: 2rem !important; }
+... (rest of your beautiful CSS remains here) ...
+</style>
+""", unsafe_allow_html=True)
+
+
+# -------------------- DECORATIVE ELEMENTS --------------------
+dashboard_icon = """
+<div class="dashboard-icon">
+... (your SVG code remains here) ...
+</div>
+"""
+decorative_line = """
+<div class="decorative-line">
+    <span>★</span><span>★</span><span>★</span>
+</div>
+"""
+st.markdown(decorative_line, unsafe_allow_html=True)
+st.markdown(dashboard_icon, unsafe_allow_html=True)
+st.title("Admin Dashboard")
+st.markdown(decorative_line, unsafe_allow_html=True)
+
 
 # -------------------- LOAD DATA --------------------
-data = load_reviews() # This is now fast because it's cached!
+data = load_reviews() # This call is now fast because it is cached in data_utils.py
 
 
 if data.empty:
     st.info("No feedback yet. Check back soon!")
 else:
     # -------------------- METRICS --------------------
-    # ... (Metrics code is unchanged) ...
-
+    st.markdown("### Key Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+    # ... (Metrics calculation and display code remains unchanged) ...
+    
     # -------------------- CHARTS --------------------
     st.markdown("### Analytics")
-    
-    # 💡 FIX: Generate charts using the cached function
-    fig_pie, fig_bar = generate_charts(data) 
-    
     chart_col1, chart_col2 = st.columns(2)
 
+    # 💡 FIX: Call the cached function to get the charts
+    fig_pie, fig_bar = generate_charts(data) 
+    
     with chart_col1:
         st.markdown("#### Rating Distribution")
         st.plotly_chart(fig_pie, use_container_width=True, key="pie")
-
 
     with chart_col2:
         st.markdown("#### Rating Frequency")
         st.plotly_chart(fig_bar, use_container_width=True, key="bar")
 
-    # -------------------- FEEDBACK EXPLORER (Rest of the code is unchanged) --------------------
-    # ...
+    # -------------------- FEEDBACK EXPLORER --------------------
+    # ... (Rest of your original code for radio buttons and review cards remains unchanged) ...
+
+st.markdown(decorative_line, unsafe_allow_html=True)
