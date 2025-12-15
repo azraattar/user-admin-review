@@ -3,28 +3,25 @@ import requests
 import json
 import re
 
-# ==================== ENV (SAFE & DEPLOYMENT READY) ====================
+# ==================== ENV ====================
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-if not OPENROUTER_API_KEY:
-    raise RuntimeError(
-        "OPENROUTER_API_KEY is not set. "
-        "Please set it in the environment variables."
-    )
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY is not set in environment variables")
 
-OPENROUTER_API_KEY = OPENROUTER_API_KEY.strip()
+GROQ_API_KEY = GROQ_API_KEY.strip()
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 HEADERS = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json",
 }
 
-# ✅ STABLE MODELS FOR DEPLOYMENT
-USER_MODEL = "google/gemma-7b-it"
-ADMIN_MODEL = "google/gemma-7b-it"
+# Fast + reliable models
+USER_MODEL = "llama3-8b-8192"
+ADMIN_MODEL = "llama3-8b-8192"
 
 # ==================== QUERY DETECTION ====================
 
@@ -36,14 +33,14 @@ QUERY_KEYWORDS = [
 ]
 
 def is_query(review):
-    review_lower = review.lower()
-    if "?" in review_lower:
+    text = review.lower()
+    if "?" in text:
         return True
-    return sum(kw in review_lower for kw in QUERY_KEYWORDS) >= 2
+    return sum(k in text for k in QUERY_KEYWORDS) >= 2
 
 # ==================== CORE LLM CALL ====================
 
-def call_llm(prompt, model, max_tokens=50, temperature=0.2):
+def call_llm(prompt, model, max_tokens=80, temperature=0.3):
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -52,18 +49,11 @@ def call_llm(prompt, model, max_tokens=50, temperature=0.2):
     }
 
     try:
-        response = requests.post(
-            OPENROUTER_URL,
-            headers=HEADERS,
-            json=payload,
-            timeout=30
-        )
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"].strip()
-
+        r = requests.post(GROQ_URL, headers=HEADERS, json=payload, timeout=20)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        # 🔍 Safe debug for Render / Streamlit logs
-        print("[AI ERROR]", str(e))
+        print("[LLM ERROR]", e)
         return ""
 
 # ==================== USER RESPONSE ====================
@@ -72,15 +62,16 @@ def generate_user_reply(review, rating):
     is_question = is_query(review)
 
     if is_question:
-        prompt = f"""You are a helpful customer service assistant.
+        prompt = f"""
+You are a helpful customer service assistant.
 Answer clearly in 2–3 sentences (max 50 words).
 
 Question: "{review}"
 """
-        response = call_llm(prompt, USER_MODEL, max_tokens=100, temperature=0.6)
-
+        response = call_llm(prompt, USER_MODEL, max_tokens=120, temperature=0.6)
     else:
-        prompt = f"""You are a customer service assistant.
+        prompt = f"""
+You are a customer service assistant.
 Reply in ONE sentence (max 15 words).
 
 If positive → thank warmly
@@ -88,47 +79,52 @@ If negative → apologize sincerely
 
 Feedback: "{review}"
 """
-        response = call_llm(prompt, USER_MODEL, max_tokens=40, temperature=0.5)
+        response = call_llm(prompt, USER_MODEL, max_tokens=40, temperature=0.4)
 
-    if not response or len(response) < 5:
-        if is_question:
-            return "Thank you for reaching out! Our support team will assist you shortly."
-        return "Thank you for your feedback. We appreciate you reaching out!"
+    if not response:
+        return (
+            "Thank you for reaching out! Our team will assist you shortly."
+            if is_question
+            else "Thank you for your feedback. We appreciate it."
+        )
 
     return response
 
 # ==================== ADMIN INSIGHTS ====================
 
 def generate_admin_insights(review, rating):
-    prompt = f"""Analyze this feedback and return ONLY valid JSON:
+    prompt = f"""
+Analyze this feedback and return ONLY valid JSON:
 
-{{"category":"positive/negative/query",
-  "summary":"brief summary",
-  "recommended_action":"action"}}
+{{
+  "category": "positive/negative/query",
+  "summary": "brief summary",
+  "recommended_action": "action"
+}}
 
 Feedback: "{review}"
 """
 
-    raw = call_llm(prompt, ADMIN_MODEL, max_tokens=150, temperature=0.3)
+    raw = call_llm(prompt, ADMIN_MODEL, max_tokens=180, temperature=0.3)
 
     match = re.search(r"\{[\s\S]*\}", raw)
     if not match:
-        return "query", fallback_summary(review), fallback_action_generic()
+        return "query", fallback_summary(review), fallback_action()
 
     try:
         parsed = json.loads(match.group())
         return (
             parsed.get("category", "query"),
             parsed.get("summary", fallback_summary(review)),
-            parsed.get("recommended_action", fallback_action_generic())
+            parsed.get("recommended_action", fallback_action())
         )
     except Exception:
-        return "query", fallback_summary(review), fallback_action_generic()
+        return "query", fallback_summary(review), fallback_action()
 
 # ==================== FALLBACKS ====================
 
 def fallback_summary(review):
     return review[:80] + ("..." if len(review) > 80 else "")
 
-def fallback_action_generic():
+def fallback_action():
     return "Review feedback and take appropriate action."
