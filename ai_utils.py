@@ -65,7 +65,7 @@ if OPENROUTER_API_KEY:
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://huggingface.co",
+    "HTTP-Referer": "https://streamlit.app",
     "X-Title": "AI Feedback System"
 }
 
