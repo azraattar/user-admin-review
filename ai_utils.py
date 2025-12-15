@@ -51,7 +51,7 @@ else:
     
     print(f"\n⚠️  FALLBACK: Using hardcoded key for testing")
     # TEMPORARY FALLBACK - Replace with your actual key for testing
-    OPENROUTER_API_KEY = "sk-or-v1-PASTE_YOUR_KEY_HERE"  # ← PUT YOUR KEY HERE
+     # ← PUT YOUR KEY HERE
 
 print("="*70 + "\n")
 
