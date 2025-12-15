@@ -65,7 +65,7 @@ if OPENROUTER_API_KEY:
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://ai-feedback-system",
+    "HTTP-Referer": "https://huggingface.co",
     "X-Title": "AI Feedback System"
 }
 
@@ -95,66 +95,66 @@ def is_query(review):
     return query_count >= 2
 
 # -------------------- TEST API CONNECTION --------------------
-def test_api_connection():
-    """Test if API key works"""
-    print("\n" + "="*70)
-    print("🔌 TESTING API CONNECTION")
-    print("="*70)
+# def test_api_connection():
+#     """Test if API key works"""
+#     print("\n" + "="*70)
+#     print("🔌 TESTING API CONNECTION")
+#     print("="*70)
     
-    if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "sk-or-v1-PASTE_YOUR_KEY_HERE":
-        print("❌ Cannot test - API key not configured properly\n")
-        print("⚠️  Please set OPENROUTER_API_KEY in .env file or hardcode it temporarily")
-        print("="*70 + "\n")
-        return False
+#     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "sk-or-v1-PASTE_YOUR_KEY_HERE":
+#         print("❌ Cannot test - API key not configured properly\n")
+#         print("⚠️  Please set OPENROUTER_API_KEY in .env file or hardcode it temporarily")
+#         print("="*70 + "\n")
+#         return False
     
-    try:
-        test_payload = {
-            "model": USER_MODEL,
-            "messages": [{"role": "user", "content": "Hi"}],
-            "max_tokens": 5
-        }
+#     try:
+#         test_payload = {
+#             "model": USER_MODEL,
+#             "messages": [{"role": "user", "content": "Hi"}],
+#             "max_tokens": 5
+#         }
         
-        print(f"📤 Sending test request to: {OPENROUTER_URL}")
-        print(f"🔑 Using key: {OPENROUTER_API_KEY[:15]}...{OPENROUTER_API_KEY[-5:]}")
-        print(f"🤖 Model: {USER_MODEL}")
+#         print(f"📤 Sending test request to: {OPENROUTER_URL}")
+#         print(f"🔑 Using key: {OPENROUTER_API_KEY[:15]}...{OPENROUTER_API_KEY[-5:]}")
+#         print(f"🤖 Model: {USER_MODEL}")
         
-        response = requests.post(
-            OPENROUTER_URL,
-            headers=HEADERS,
-            json=test_payload,
-            timeout=10
-        )
+#         response = requests.post(
+#             OPENROUTER_URL,
+#             headers=HEADERS,
+#             json=test_payload,
+#             timeout=10
+#         )
         
-        print(f"\n📥 Response Status: {response.status_code}")
+#         print(f"\n📥 Response Status: {response.status_code}")
         
-        if response.status_code == 200:
-            print("✅ API CONNECTION SUCCESSFUL!")
-            result = response.json()
-            print(f"💬 Test response: {result['choices'][0]['message']['content']}")
-            print("="*70 + "\n")
-            return True
-        else:
-            print(f"❌ API ERROR: {response.status_code}")
-            print(f"📄 Error body: {response.text}")
+#         if response.status_code == 200:
+#             print("✅ API CONNECTION SUCCESSFUL!")
+#             result = response.json()
+#             print(f"💬 Test response: {result['choices'][0]['message']['content']}")
+#             print("="*70 + "\n")
+#             return True
+#         else:
+#             print(f"❌ API ERROR: {response.status_code}")
+#             print(f"📄 Error body: {response.text}")
             
-            if response.status_code == 401:
-                print("\n💡 FIX: Your API key is invalid. Please:")
-                print("   1. Go to https://openrouter.ai/keys")
-                print("   2. Create a new API key")
-                print("   3. Update your .env file")
-                print("   4. Restart the app")
+#             if response.status_code == 401:
+#                 print("\n💡 FIX: Your API key is invalid. Please:")
+#                 print("   1. Go to https://openrouter.ai/keys")
+#                 print("   2. Create a new API key")
+#                 print("   3. Update your .env file")
+#                 print("   4. Restart the app")
             
-            print("="*70 + "\n")
-            return False
+#             print("="*70 + "\n")
+#             return False
             
-    except Exception as e:
-        print(f"❌ CONNECTION FAILED: {e}")
-        print(f"🔍 Exception type: {type(e).__name__}")
-        print("="*70 + "\n")
-        return False
+#     except Exception as e:
+#         print(f"❌ CONNECTION FAILED: {e}")
+#         print(f"🔍 Exception type: {type(e).__name__}")
+#         print("="*70 + "\n")
+#         return False
 
-# Run test on import
-test_api_connection()
+# # Run test on import
+# test_api_connection()
 
 # -------------------- CORE LLM CALL --------------------
 def call_llm(prompt, model, max_tokens=50, temperature=0.2):
