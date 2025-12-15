@@ -41,12 +41,16 @@ def is_query(text: str) -> bool:
 
 def call_llm(prompt, model, max_tokens=120, temperature=0.4):
     payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "stream": False
-    }
+    "model": model,
+    "messages": [
+        {"role": "user", "content": prompt}
+    ],
+    "max_tokens": max_tokens,
+    "temperature": temperature,
+    "top_p": 1,
+    "stream": False
+}
+
 
     try:
         r = requests.post(
@@ -58,13 +62,11 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
 
-    except Exception as e:
-        print("❌ GROQ ERROR:", e)
-        try:
-            print("❌ GROQ RESPONSE:", r.text)
-        except Exception:
-            pass
-        return ""
+    except requests.exceptions.HTTPError as e:
+    print("❌ GROQ HTTP ERROR:", e)
+    print("❌ GROQ RESPONSE BODY:", response.text)
+    return ""
+
 
 # ==================== USER RESPONSE (USED IN UI) ====================
 
