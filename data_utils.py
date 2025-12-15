@@ -4,12 +4,14 @@ import streamlit as st
 
 # --- Supabase Integration using st.connection ---
 
-def get_connection():
-    """Initializes and returns the Streamlit connection object for Supabase."""
-    # This automatically uses the DB_USER, DB_PASSWORD, DB_HOST secrets
-    # defined in your Streamlit Cloud deployment.
-    return st.connection("postgresql", type="sql")
+# data_utils.py
 
+def get_connection():
+    """
+    Initializes and returns the Streamlit connection object for Supabase
+    using the full connection URI from the 'DATABASE_URL' secret.
+    """
+    return st.connection("supabase_db", type="sql", url=st.secrets["DATABASE_URL"])
 
 def save_review(rating, review, ai_response, summary, action):
     """Saves a new review record to the Supabase database."""
