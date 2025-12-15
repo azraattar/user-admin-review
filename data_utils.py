@@ -1,9 +1,10 @@
 import sqlite3
 import pandas as pd
 import os
+# 🚨 FIX 1: Import Streamlit for caching
+import streamlit as st 
 
 # Set the path for the database file. 
-# It's kept simple so it sits in the root of the app where it is accessible.
 DB_FILE = "reviews.db"
 
 def init_db():
@@ -39,11 +40,16 @@ def save_review(rating, review, ai_response, summary, action):
         conn.commit()
         conn.close()
         
+        # 🚨 FIX 2: Clear the cache so the Admin Dashboard gets the new data immediately
+        load_reviews.clear()
+        
         print(f"✅ Review saved to: {DB_FILE}")
 
     except Exception as e:
         print("❌ Error saving review:", e)
 
+# 🚨 FIX 3: Add the cache decorator to prevent slow dashboard reloading
+@st.cache_data(ttl=600) # Cache for 10 minutes
 def load_reviews():
     """Loads all reviews from the SQLite database into a Pandas DataFrame."""
     try:
