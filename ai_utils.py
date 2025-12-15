@@ -19,7 +19,7 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# Use most stable Groq model
+# Use most stable Groq model (FIXED: Updated model name)
 USER_MODEL = "llama-3.3-70b-versatile"
 ADMIN_MODEL = "llama-3.3-70b-versatile"
 
@@ -35,7 +35,8 @@ def is_query(text: str) -> bool:
     text = text.lower()
     if "?" in text:
         return True
-    return sum(k in text for k in QUERY_KEYWORDS) >= 2
+    # FIXED: Changed from >= 2 to >= 1 to correctly detect single-keyword questions like "how do i login"
+    return sum(k in text for k in QUERY_KEYWORDS) >= 1
 
 # ==================== CORE GROQ CALL ====================
 
@@ -51,8 +52,6 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
     "stream": False
 }
 
-# ... inside call_llm function
-
     try:
         r = requests.post(
             GROQ_URL,
@@ -64,13 +63,13 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         return r.json()["choices"][0]["message"]["content"].strip()
 
     except requests.exceptions.HTTPError as e:
-        # 🚨 FIX 1: Indent these lines
+        # 🚨 FIXED: Indentation corrected
         print("❌ GROQ HTTP ERROR:", e)
-        # 🚨 FIX 2: Use 'r' instead of undefined 'response' if you want the body
+        # 🚨 FIXED: Used 'r.text' for the response body
         print("❌ GROQ RESPONSE BODY:", r.text) 
         return ""
-    # Add a general exception block for other errors (e.g., Timeout)
     except Exception as e:
+        # Added a general exception handler for non-HTTP errors (e.g., Timeout)
         print("❌ GROQ GENERAL ERROR:", e)
         return ""
 
