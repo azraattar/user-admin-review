@@ -42,9 +42,7 @@ def is_query(text: str) -> bool:
 def call_llm(prompt, model, max_tokens=120, temperature=0.4):
     payload = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": temperature
     }
@@ -56,7 +54,6 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
             json=payload,
             timeout=25
         )
-
         response.raise_for_status()
         data = response.json()
         return data["choices"][0]["message"]["content"].strip()
@@ -68,46 +65,9 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
 
     return ""  # SAFE fallback
 
-# ==================== USER RESPONSE ====================
-
-def generate_user_reply(review: str, rating: int | None = None) -> str:
-    question = is_query(review)
-
-    if question:
-        prompt = f"""
-You are a helpful customer support assistant.
-Answer clearly in 2–3 short sentences (max 50 words).
-
-Customer question:
-"{review}"
-"""
-        response = call_llm(prompt, USER_MODEL, max_tokens=120, temperature=0.6)
-
-    else:
-        prompt = f"""
-You are a customer support assistant.
-Reply in ONE sentence (max 15 words).
-
-If positive → thank warmly.
-If negative → apologize sincerely.
-
-Customer feedback:
-"{review}"
-"""
-        response = call_llm(prompt, USER_MODEL, max_tokens=40, temperature=0.4)
-
-    if not response:
-        return (
-            "Thank you for reaching out. Our team will assist you shortly."
-            if question
-            else "Thank you for your feedback. We appreciate it."
-        )
-
-    return response
-
 # ==================== ADMIN INSIGHTS ====================
 
-def generate_admin_insights(review: str):
+def generate_admin_insights(review: str, rating=None):
     prompt = f"""
 Analyze the feedback and return ONLY valid JSON:
 
@@ -123,7 +83,6 @@ Feedback:
 
     raw = call_llm(prompt, ADMIN_MODEL, max_tokens=180, temperature=0.3)
 
-    # Extract JSON safely
     match = re.search(r"\{[\s\S]*\}", raw)
     if not match:
         return "query", fallback_summary(review), fallback_action()
