@@ -2,7 +2,7 @@ import os
 import requests
 import json
 import re
-from dotenv import load_dotenv
+
 
 
 # -------------------- LOAD & DEBUG ENV --------------------
@@ -11,11 +11,13 @@ print("🔍 ENVIRONMENT VARIABLE DEBUG")
 print("="*70)
 
 # Try to load .env file
-load_dotenv()
 print(f"✓ Attempted to load .env file")
 
 # Check API key
+import os
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
 
 print(f"\n📋 API Key Status:")
 print(f"  • Exists: {OPENROUTER_API_KEY is not None}")
