@@ -8,19 +8,11 @@ import streamlit as st
 
 # data_utils.py
 
+# data_utils.py
+
 def get_connection():
-    """
-    Initializes and returns the Streamlit connection object for Supabase
-    using all four secrets explicitly.
-    """
-    # Note: st.secrets must be used to access the values defined in the Streamlit UI
-    return st.connection("postgresql", type="sql", 
-        username=st.secrets["DB_USER"],
-        password=st.secrets["DB_PASSWORD"],
-        host=st.secrets["DB_HOST"],
-        port=st.secrets["DB_PORT"], # Use the new port secret
-        database="postgres" 
-    )
+    # This must match the secret name you used.
+    return st.connection("supabase_db", type="sql", url=st.secrets["DATABASE_URL"])
 
 # ... rest of data_utils.py ...
 def save_review(rating, review, ai_response, summary, action):
