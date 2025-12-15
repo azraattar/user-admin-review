@@ -65,8 +65,6 @@ if OPENROUTER_API_KEY:
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://streamlit.app",
-    "X-Title": "AI Feedback System"
 }
 
 USER_MODEL = "mistralai/mistral-7b-instruct:free"
