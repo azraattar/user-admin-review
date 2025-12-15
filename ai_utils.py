@@ -1,147 +1,273 @@
+import os
 import requests
 import json
 import re
-import random
+from dotenv import load_dotenv
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
 
-# Fast model for classification + short replies
-USER_MODEL = "phi3"
+# -------------------- LOAD & DEBUG ENV --------------------
+print("\n" + "="*70)
+print("🔍 ENVIRONMENT VARIABLE DEBUG")
+print("="*70)
 
-# Better model for admin insights
-ADMIN_MODEL = "phi3"
+# Try to load .env file
+load_dotenv()
+print(f"✓ Attempted to load .env file")
 
-# ---------- RESPONSE TEMPLATES ----------
-POSITIVE_RESPONSES = [
-    "Thank you so much for your kind feedback! We really appreciate it.",
-    "We're glad you had a great experience. Thanks for sharing!",
-    "Your positive feedback means a lot to us. Thank you!"
+# Check API key
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+print(f"\n📋 API Key Status:")
+print(f"  • Exists: {OPENROUTER_API_KEY is not None}")
+print(f"  • Type: {type(OPENROUTER_API_KEY)}")
+print(f"  • Length: {len(OPENROUTER_API_KEY) if OPENROUTER_API_KEY else 0} characters")
+
+if OPENROUTER_API_KEY:
+    print(f"  • Starts with: '{OPENROUTER_API_KEY[:20]}...'")
+    print(f"  • Ends with: '...{OPENROUTER_API_KEY[-10:]}'")
+    print(f"  • Has whitespace: {bool(OPENROUTER_API_KEY.strip() != OPENROUTER_API_KEY)}")
+    print(f"  • Has newlines: {'\\n' in OPENROUTER_API_KEY}")
+    print(f"  • Has quotes: {'"' in OPENROUTER_API_KEY or "'" in OPENROUTER_API_KEY}")
+else:
+    print(f"  ❌ API KEY NOT FOUND!")
+    print(f"\n📁 Current working directory: {os.getcwd()}")
+    print(f"📄 Looking for .env in: {os.path.join(os.getcwd(), '.env')}")
+    print(f"📂 .env file exists: {os.path.exists('.env')}")
+    
+    # List all environment variables starting with OPEN
+    all_env = {k: v for k, v in os.environ.items() if 'OPEN' in k.upper()}
+    print(f"\n🔑 Environment variables containing 'OPEN': {list(all_env.keys())}")
+
+print("="*70 + "\n")
+
+
+# -------------------- OPENROUTER CONFIG --------------------
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# Clean API key (remove any whitespace)
+if OPENROUTER_API_KEY:
+    OPENROUTER_API_KEY = OPENROUTER_API_KEY.strip()
+
+HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://ai-feedback-system",
+    "X-Title": "AI Feedback System"
+}
+
+USER_MODEL = "mistralai/mistral-7b-instruct:free"
+ADMIN_MODEL = "mistralai/mistral-7b-instruct:free"
+
+
+# -------------------- QUERY DETECTION --------------------
+QUERY_KEYWORDS = [
+    "how", "what", "when", "where", "why", "can i", "could you", 
+    "please help", "help", "support", "question", "wondering", 
+    "clarify", "explain", "guide", "tell me", "show me", "?",
+    "does this", "do you", "is there", "will this", "should i"
 ]
 
-NEGATIVE_RESPONSES = [
-    "We're very sorry for the inconvenience caused. Please accept our apologies.",
-    "Thank you for letting us know — we sincerely regret this experience.",
-    "We apologize for this issue and appreciate your patience."
-]
+def is_query(review):
+    """Detect if feedback is a question/query"""
+    review_lower = review.lower()
+    
+    # Check for question mark
+    if "?" in review:
+        return True
+    
+    # Check for query keywords
+    query_count = sum(1 for kw in QUERY_KEYWORDS if kw in review_lower)
+    
+    # If 2+ query keywords, likely a question
+    return query_count >= 2
 
-# ---------- AI CATEGORY CLASSIFIER ----------
-def classify_feedback_ai(review, rating):
-    prompt = f"""
-Classify the following feedback into ONE word only:
-POSITIVE, NEGATIVE, or QUERY.
 
-Rating: {rating}
-Feedback: "{review}"
-"""
-
-    payload = {
-        "model": USER_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0,
-            "num_predict": 3
-        }
-    }
-
+# -------------------- TEST API CONNECTION --------------------
+def test_api_connection():
+    """Test if API key works"""
+    print("\n" + "="*70)
+    print("🔌 TESTING API CONNECTION")
+    print("="*70)
+    
+    if not OPENROUTER_API_KEY:
+        print("❌ Cannot test - API key not loaded\n")
+        return False
+    
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=15)
-        response.raise_for_status()
-        result = response.json().get("response", "").strip().upper()
-
-        if "POSITIVE" in result:
-            return "positive"
-        if "NEGATIVE" in result:
-            return "negative"
-        return "query"
-
-    except Exception:
-        # Fallback to rating-based logic
-        if rating >= 4:
-            return "positive"
-        elif rating <= 2:
-            return "negative"
+        test_payload = {
+            "model": USER_MODEL,
+            "messages": [{"role": "user", "content": "Hi"}],
+            "max_tokens": 5
+        }
+        
+        print(f"📤 Sending test request to: {OPENROUTER_URL}")
+        print(f"🔑 Using key: {OPENROUTER_API_KEY[:15]}...{OPENROUTER_API_KEY[-5:]}")
+        print(f"🤖 Model: {USER_MODEL}")
+        
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=HEADERS,
+            json=test_payload,
+            timeout=10
+        )
+        
+        print(f"\n📥 Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            print("✅ API CONNECTION SUCCESSFUL!")
+            result = response.json()
+            print(f"💬 Test response: {result['choices'][0]['message']['content']}")
+            print("="*70 + "\n")
+            return True
         else:
-            return "query"
+            print(f"❌ API ERROR: {response.status_code}")
+            print(f"📄 Error body: {response.text}")
+            print("="*70 + "\n")
+            return False
+            
+    except Exception as e:
+        print(f"❌ CONNECTION FAILED: {e}")
+        print(f"🔍 Exception type: {type(e).__name__}")
+        print("="*70 + "\n")
+        return False
 
-# ---------- AI RESPONSE FOR QUERY ----------
-def generate_query_response_ai(review):
-    prompt = f"""
-Reply to the following user feedback in TWO short sentence.
-Use a helpful and supportive tone.
 
-Feedback: "{review}"
-"""
+# Run test on import
+test_api_connection()
 
+
+# -------------------- CORE LLM CALL --------------------
+def call_llm(prompt, model, max_tokens=50, temperature=0.2):
     payload = {
-        "model": USER_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.2,
-            "num_predict": 45
-        }
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=20)
+        print(f"\n[API CALL] Model: {model}, Max tokens: {max_tokens}")
+        
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=HEADERS,
+            json=payload,
+            timeout=30
+        )
+        
+        print(f"[API RESPONSE] Status: {response.status_code}")
+        
         response.raise_for_status()
-        return response.json().get("response", "").strip()
+        result = response.json()["choices"][0]["message"]["content"].strip()
+        print(f"[AI RESPONSE] {result[:100]}...")
+        return result
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"[HTTP ERROR] {e}")
+        print(f"[ERROR BODY] {e.response.text if hasattr(e, 'response') else 'No response body'}")
+        return ""
+    except Exception as e:
+        print(f"[UNEXPECTED ERROR] {type(e).__name__}: {e}")
+        return ""
 
-    except Exception:
-        return "Thank you for reaching out. Our team will look into this."
 
-# ---------- FINAL USER RESPONSE ----------
+# ---------- SMART AI CALL: DETECT QUERY & ADJUST LENGTH ----------
 def generate_user_reply(review, rating):
-    category = classify_feedback_ai(review, rating)
+    """
+    Detects if feedback is a query and adjusts response length:
+    - Queries: up to 50 words (more detailed help)
+    - Positive/Negative: up to 15 words (brief acknowledgment)
+    """
+    
+    # Detect if this is a query
+    is_question = is_query(review)
+    
+    if is_question:
+        # QUERY: Allow longer, more helpful response
+        prompt = f"""You are a helpful customer service assistant. Answer this customer question clearly and helpfully in 2-3 sentences (max 50 words).
 
-    if category == "positive":
-        return random.choice(POSITIVE_RESPONSES)
+Question: "{review}"
 
-    if category == "negative":
-        return random.choice(NEGATIVE_RESPONSES)
+Your helpful answer:"""
+        
+        response = call_llm(
+            prompt,
+            USER_MODEL,
+            max_tokens=100,  # More tokens for queries
+            temperature=0.6
+        )
+        
+        print(f"[QUERY DETECTED] Using extended response format")
+        
+    else:
+        # POSITIVE/NEGATIVE: Short response
+        prompt = f"""You are a customer service assistant. Read this feedback and respond naturally in ONE sentence (max 15 words).
 
-    # QUERY → AI response
-    return generate_query_response_ai(review)
+If positive: thank the user warmly
+If negative: apologize sincerely
+
+Feedback: "{review}"
+
+Your response:"""
+        
+        response = call_llm(
+            prompt,
+            USER_MODEL,
+            max_tokens=40,  # Short for pos/neg
+            temperature=0.5
+        )
+        
+        print(f"[SENTIMENT DETECTED] Using brief response format")
+
+    # Fallback logic
+    if not response or len(response) < 5:
+        print("[FALLBACK] Using default response")
+        if is_question:
+            return "Thank you for reaching out! Our support team will assist you shortly with your question."
+        return "Thank you for your feedback. We appreciate you reaching out!"
+
+    return response
+
 
 # ---------- ADMIN INSIGHTS ----------
 def generate_admin_insights(review, rating):
-    prompt = f"""
-You are an AI analyst.
+    prompt = f"""Analyze this feedback and return ONLY valid JSON in this exact format:
 
-Return valid JSON ONLY with:
-- summary (one sentence)
-- recommended_action (short business action)
+{{"category": "positive/negative/query", "summary": "brief summary here", "recommended_action": "action here"}}
 
-Rating: {rating}
-Review: "{review}"
-"""
+Feedback: "{review}"
 
-    payload = {
-        "model": ADMIN_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.3,
-            "num_predict": 160
-        }
-    }
+JSON:"""
+
+    raw = call_llm(
+        prompt,
+        ADMIN_MODEL,
+        max_tokens=150,
+        temperature=0.3
+    )
+
+    match = re.search(r"\{[\s\S]*\}", raw)
+    if not match:
+        print("[JSON ERROR] No JSON found in response")
+        return "query", fallback_summary(review), fallback_action_generic()
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=60)
-        response.raise_for_status()
-
-        raw_text = response.json().get("response", "")
-        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
-
-        if not match:
-            raise ValueError("No JSON found")
-
         parsed = json.loads(match.group())
         return (
-            parsed.get("summary", "Summary unavailable."),
-            parsed.get("recommended_action", "No action suggested.")
+            parsed.get("category", "query"),
+            parsed.get("summary", fallback_summary(review)),
+            parsed.get("recommended_action", fallback_action_generic())
         )
+    except Exception as e:
+        print(f"[JSON PARSE ERROR] {e}")
+        return "query", fallback_summary(review), fallback_action_generic()
 
-    except Exception:
-        return "Summary unavailable.", "No action suggested."
+
+# ---------- FALLBACKS ----------
+def fallback_summary(review):
+    return review[:80] + ("..." if len(review) > 80 else "")
+
+def fallback_action_generic():
+    return "Review feedback and take appropriate action."

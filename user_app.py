@@ -169,7 +169,8 @@ with col2:
 
             # 2️⃣ ADMIN PROCESSING (SECONDARY)
             with st.spinner("Finalizing feedback..."):
-                summary, action = generate_admin_insights(review, rating)
+                category, summary, action = generate_admin_insights(review, rating)
+
 
                 save_review(
                     rating,
