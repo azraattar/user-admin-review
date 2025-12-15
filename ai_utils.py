@@ -22,8 +22,9 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-USER_MODEL = "mistralai/mistral-7b-instruct:free"
-ADMIN_MODEL = "mistralai/mistral-7b-instruct:free"
+# ✅ STABLE MODELS FOR DEPLOYMENT
+USER_MODEL = "google/gemma-7b-it"
+ADMIN_MODEL = "google/gemma-7b-it"
 
 # ==================== QUERY DETECTION ====================
 
@@ -59,7 +60,10 @@ def call_llm(prompt, model, max_tokens=50, temperature=0.2):
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"].strip()
-    except Exception:
+
+    except Exception as e:
+        # 🔍 Safe debug for Render / Streamlit logs
+        print("[AI ERROR]", str(e))
         return ""
 
 # ==================== USER RESPONSE ====================
@@ -74,6 +78,7 @@ Answer clearly in 2–3 sentences (max 50 words).
 Question: "{review}"
 """
         response = call_llm(prompt, USER_MODEL, max_tokens=100, temperature=0.6)
+
     else:
         prompt = f"""You are a customer service assistant.
 Reply in ONE sentence (max 15 words).
