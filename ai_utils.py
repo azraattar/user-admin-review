@@ -19,7 +19,7 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# Stable + fast Groq models
+# Models
 USER_MODEL = "llama3-8b-8192"
 ADMIN_MODEL = "llama3-8b-8192"
 
@@ -63,7 +63,43 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
     except (KeyError, IndexError, ValueError) as e:
         print("❌ GROQ RESPONSE PARSE ERROR:", e)
 
-    return ""  # SAFE fallback
+    return ""
+
+# ==================== USER RESPONSE ====================
+
+def generate_user_reply(review: str, rating=None) -> str:
+    question = is_query(review)
+
+    if question:
+        prompt = f"""
+You are a helpful customer support assistant.
+Answer clearly in 2–3 short sentences (max 50 words).
+
+Customer question:
+"{review}"
+"""
+        response = call_llm(prompt, USER_MODEL, max_tokens=120, temperature=0.6)
+    else:
+        prompt = f"""
+You are a customer support assistant.
+Reply in ONE sentence (max 15 words).
+
+If positive → thank warmly.
+If negative → apologize sincerely.
+
+Customer feedback:
+"{review}"
+"""
+        response = call_llm(prompt, USER_MODEL, max_tokens=40, temperature=0.4)
+
+    if not response:
+        return (
+            "Thank you for reaching out. Our team will assist you shortly."
+            if question
+            else "Thank you for your feedback. We appreciate it."
+        )
+
+    return response
 
 # ==================== ADMIN INSIGHTS ====================
 
