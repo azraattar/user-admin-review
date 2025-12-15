@@ -126,7 +126,13 @@ with col2:
 
     # -------------------- FORM --------------------
     st.markdown("#### Rate Your Experience")
-    rating = st.slider("", 1, 5, 5)
+    rating = st.slider(
+    "Rating",
+    1,
+    5,
+    5,
+    label_visibility="collapsed"
+)
 
     rating_labels = {
         1: "Poor",
@@ -143,7 +149,7 @@ with col2:
 
     st.markdown("#### Share Your Thoughts")
     review = st.text_area(
-        "",
+        "Review",
         placeholder="Tell us about your experience...",
         height=150,
         label_visibility="collapsed"
