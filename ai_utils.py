@@ -8,7 +8,7 @@ import re
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
-    raise RuntimeError("❌ GROQ_API_KEY is not set in environment variables")
+    raise RuntimeError("GROQ_API_KEY is not set")
 
 GROQ_API_KEY = GROQ_API_KEY.strip()
 
@@ -19,7 +19,7 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# Models
+# Use most stable Groq model
 USER_MODEL = "llama3-70b-8192"
 ADMIN_MODEL = "llama3-70b-8192"
 
@@ -27,8 +27,8 @@ ADMIN_MODEL = "llama3-70b-8192"
 
 QUERY_KEYWORDS = [
     "how", "what", "when", "where", "why", "can i", "could you",
-    "help", "support", "question", "explain", "guide", "tell me",
-    "show me", "does", "do you", "is there", "should i"
+    "help", "support", "question", "explain", "guide",
+    "tell me", "show me", "does", "do you", "should i"
 ]
 
 def is_query(text: str) -> bool:
@@ -44,36 +44,34 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
-        "temperature": temperature
+        "temperature": temperature,
         "stream": False
-
     }
 
     try:
-        response = requests.post(
+        r = requests.post(
             GROQ_URL,
             headers=HEADERS,
             json=payload,
-            timeout=25
+            timeout=30
         )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
 
-    except requests.exceptions.HTTPError as e:
-    print("❌ GROQ HTTP ERROR:", e)
-    print("❌ RESPONSE BODY:", response.text)
+    except Exception as e:
+        print("❌ GROQ ERROR:", e)
+        try:
+            print("❌ GROQ RESPONSE:", r.text)
+        except Exception:
+            pass
+        return ""
 
-    return ""
-
-# ==================== USER RESPONSE ====================
+# ==================== USER RESPONSE (USED IN UI) ====================
 
 def generate_user_reply(review: str, rating=None) -> str:
-    question = is_query(review)
-
-    if question:
+    if is_query(review):
         prompt = f"""
-You are a helpful customer support assistant.
+You are a polite customer support assistant.
 Answer clearly in 2–3 short sentences (max 50 words).
 
 Customer question:
@@ -96,13 +94,13 @@ Customer feedback:
     if not response:
         return (
             "Thank you for reaching out. Our team will assist you shortly."
-            if question
+            if is_query(review)
             else "Thank you for your feedback. We appreciate it."
         )
 
     return response
 
-# ==================== ADMIN INSIGHTS ====================
+# ==================== ADMIN INSIGHTS (USED IN UI) ====================
 
 def generate_admin_insights(review: str, rating=None):
     prompt = f"""
@@ -131,7 +129,7 @@ Feedback:
             parsed.get("summary", fallback_summary(review)),
             parsed.get("recommended_action", fallback_action())
         )
-    except json.JSONDecodeError:
+    except Exception:
         return "query", fallback_summary(review), fallback_action()
 
 # ==================== FALLBACKS ====================
