@@ -20,8 +20,8 @@ HEADERS = {
 }
 
 # Models
-USER_MODEL = "llama3-8b-8192"
-ADMIN_MODEL = "llama3-8b-8192"
+USER_MODEL = "llama3-70b-8192"
+ADMIN_MODEL = "llama3-70b-8192"
 
 # ==================== QUERY DETECTION ====================
 
@@ -45,6 +45,8 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": temperature
+        "stream": False
+
     }
 
     try:
@@ -58,10 +60,9 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         data = response.json()
         return data["choices"][0]["message"]["content"].strip()
 
-    except requests.exceptions.RequestException as e:
-        print("❌ GROQ REQUEST ERROR:", e)
-    except (KeyError, IndexError, ValueError) as e:
-        print("❌ GROQ RESPONSE PARSE ERROR:", e)
+    except requests.exceptions.HTTPError as e:
+    print("❌ GROQ HTTP ERROR:", e)
+    print("❌ RESPONSE BODY:", response.text)
 
     return ""
 
