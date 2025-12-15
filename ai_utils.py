@@ -20,8 +20,8 @@ HEADERS = {
 }
 
 # Use most stable Groq model
-USER_MODEL = "llama3-70b-8192"
-ADMIN_MODEL = "llama3-70b-8192"
+USER_MODEL = "llama-3.3-70b-versatile"
+ADMIN_MODEL = "llama-3.3-70b-versatile"
 
 # ==================== QUERY DETECTION ====================
 
@@ -51,6 +51,7 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
     "stream": False
 }
 
+# ... inside call_llm function
 
     try:
         r = requests.post(
@@ -63,9 +64,15 @@ def call_llm(prompt, model, max_tokens=120, temperature=0.4):
         return r.json()["choices"][0]["message"]["content"].strip()
 
     except requests.exceptions.HTTPError as e:
-    print("❌ GROQ HTTP ERROR:", e)
-    print("❌ GROQ RESPONSE BODY:", response.text)
-    return ""
+        # 🚨 FIX 1: Indent these lines
+        print("❌ GROQ HTTP ERROR:", e)
+        # 🚨 FIX 2: Use 'r' instead of undefined 'response' if you want the body
+        print("❌ GROQ RESPONSE BODY:", r.text) 
+        return ""
+    # Add a general exception block for other errors (e.g., Timeout)
+    except Exception as e:
+        print("❌ GROQ GENERAL ERROR:", e)
+        return ""
 
 
 # ==================== USER RESPONSE (USED IN UI) ====================
